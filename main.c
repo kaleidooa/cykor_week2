@@ -32,30 +32,52 @@ void free_memory(Directory *dir){
     free(dir);
 }
 
-void cd(Directory **current_dir, char *where, Directory *root){
-    if(strcmp(where,"/") == 0){
-        *current_dir = root;
+void cd(Directory **current_dir, char *where, Directory *root , Directory *home){
+    
+    char *token;
+    Directory *target_dir;
+
+    if(strlen(where) == 0){
+        *current_dir = home;
         return;
     }
-    else if(strcmp(where, "..") ==0){
-        if((*current_dir)->parent != NULL){
-            *current_dir = (*current_dir) ->parent;
-            return;
+
+    if(where[0] == '/'){
+        target_dir = root;
+        where++;
+    }
+    else{
+        target_dir = *current_dir;
+    }
+
+    token = strtok(where , "/");
+
+    while(token != NULL){
+
+        if(strcmp(token, "..") ==0){
+            if(target_dir->parent != NULL){
+                target_dir = target_dir->parent;
+            }
         }
         else{
-            return;
+            int isfound = 0;
+            for(int i = 0 ;  i < target_dir->subdirectory_count; i++){
+                if(strcmp(token, target_dir->subdirectories[i]->name) == 0){
+                    target_dir = target_dir->subdirectories[i];
+                    isfound = 1;
+                    break;
+                }   
+            }    
+            if(isfound == 0){
+                printf("-bash : cd : %s: No such file or directory\n" , where);
+                return;
+            }
         }
+
+        token = strtok(NULL , "/");
     }
 
-    for(int i = 0 ;  i < (*current_dir)->subdirectory_count; i++){
-        if(strcmp(where,(*current_dir)->subdirectories[i]->name) == 0){
-            *current_dir = (*current_dir)->subdirectories[i];
-            return;
-        }
-    }
-
-    printf("-bash : cd : %s: No such file or directory\n" , where);
-
+    *current_dir = target_dir;
 }
 
 void ls(Directory *current_dir){
@@ -113,9 +135,15 @@ int main(){
 
     while(1){
 
-        printf("[%s@%s:" , username, hostname);
-        pwd(current_dir,1);
-        printf("]$");
+        if(current_dir == kaleido){
+            printf("[%s@%s:~]$" , username,hostname);
+        }
+        else{
+            printf("[%s@%s:" , username, hostname);
+            pwd(current_dir,1);
+            printf("]$");
+    
+        }
 
         fgets(input , 100 , stdin);      
         input[strcspn(input, "\n")] = '\0';
@@ -127,7 +155,7 @@ int main(){
             break;
         }
         else if(strcmp(command, "cd") == 0){
-            cd(&current_dir,argument,root);
+            cd(&current_dir,argument,root ,kaleido);
         }
         else if(strcmp(command, "ls") ==0){
             ls(current_dir);
