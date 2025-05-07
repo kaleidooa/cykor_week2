@@ -1,7 +1,149 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_SIZE 100
+
+typedef struct Directory{
+    char name[MAX_SIZE];
+    struct Directory *parent;
+    struct Directory *subdirectories[10];
+    int subdirectory_count;
+} Directory;
+
+Directory* create_directory(char *name, Directory*parent){
+    Directory *new_dir = (Directory*)malloc(sizeof(Directory));
+    strcpy(new_dir->name,name);
+    new_dir->parent = parent;
+    new_dir->subdirectory_count = 0;
+
+    if(parent != NULL){
+        parent-> subdirectories[parent->subdirectory_count] = new_dir;
+        parent-> subdirectory_count ++;
+    }
+
+    return new_dir;
+}
+
+void free_memory(Directory *dir){
+    for(int i = 0; i<dir->subdirectory_count; i++){
+        free_memory(dir->subdirectories[i]);
+    }
+    free(dir);
+}
+
+void cd(Directory **current_dir, char *where, Directory *root){
+    if(strcmp(where,"/") == 0){
+        *current_dir = root;
+        return;
+    }
+    else if(strcmp(where, "..") ==0){
+        if((*current_dir)->parent != NULL){
+            *current_dir = (*current_dir) ->parent;
+            return;
+        }
+        else{
+            return;
+        }
+    }
+
+    for(int i = 0 ;  i < (*current_dir)->subdirectory_count; i++){
+        if(strcmp(where,(*current_dir)->subdirectories[i]->name) == 0){
+            *current_dir = (*current_dir)->subdirectories[i];
+            return;
+        }
+    }
+
+    printf("-bash : cd : %s: No such file or directory\n" , where);
+
+}
+
+void ls(Directory *current_dir){
+    int count = 0;
+
+    for(int i = 0 ; i < current_dir->subdirectory_count; i++){
+        printf("%s   " , current_dir -> subdirectories[i] -> name);
+        if(count == 4){
+            printf("\n");
+            count = 0;
+        }
+    }
+    if(current_dir->subdirectory_count == 0){
+        return;
+    }
+    printf("\n");
+}
+
+void pwd(Directory *current_dir , int isHead){
+    if(current_dir == NULL){
+        return;
+    }
+
+    if(current_dir->parent!=NULL){
+        pwd(current_dir->parent , 0);
+    }
+
+    if(strcmp(current_dir->name , "root") == 0){
+        printf("/");
+    }
+    else{
+        printf("%s" , current_dir->name);
+        if(!isHead){
+            printf("/");
+        }
+    }
+}
 
 int main(){
 
-    
+    char username[MAX_SIZE] = "kaleido";
+    char hostname[MAX_SIZE] = "anggimoti";
+    char input[MAX_SIZE] = {0,};
 
+    char command[MAX_SIZE];
+    char argument[MAX_SIZE];
+
+    Directory *root = create_directory("root" , NULL);
+    Directory *home = create_directory("home" , root);
+    Directory *etc = create_directory("etc" , root);
+    Directory *bin = create_directory("bin" , root);
+    Directory *kaleido = create_directory("kaleido" , home);
+    Directory *user = create_directory("user" , home);
+    Directory *current_dir = root;
+
+    while(1){
+
+        printf("[%s@%s:" , username, hostname);
+        pwd(current_dir,1);
+        printf("]$");
+
+        fgets(input , 100 , stdin);      
+        input[strcspn(input, "\n")] = '\0';
+        
+        memset(argument , 0 , MAX_SIZE);
+        sscanf(input, "%s %s" , command , argument);
+
+        if(strcmp(command , "exit") == 0){
+            break;
+        }
+        else if(strcmp(command, "cd") == 0){
+            cd(&current_dir,argument,root);
+        }
+        else if(strcmp(command, "ls") ==0){
+            ls(current_dir);
+        }
+        else if(strcmp(command , "pwd") == 0){
+            pwd(current_dir , 1);
+            printf("\n");
+        }
+        else{
+            printf("%s: command not found\n" , command); 
+        }
+        
+
+    }
+
+    free_memory(root);
+
+    return 0;
 }
