@@ -4,6 +4,7 @@
 
 #define MAX_SIZE 100
 
+
 typedef struct Directory{
     char name[MAX_SIZE];
     struct Directory *parent;
@@ -24,6 +25,54 @@ Directory* create_directory(char *name, Directory*parent){
 
     return new_dir;
 }
+
+void cd(Directory **, char *, Directory *, Directory *);
+void ls(Directory *);
+void pwd(Directory *, int);
+
+
+void split_pipeline(char* input, char** commands){
+    char* token = strtok(input, "|");
+    int i = 0;
+
+    while(token != NULL){
+        commands[i] = token;
+        i++;
+        token = strtok(NULL , "|");
+    }
+
+    commands[i] = NULL;
+
+}
+
+void execute_command(char* input , Directory **current_dir , Directory *root , Directory *home){
+    
+    char argument[MAX_SIZE] = {0,};
+    char command[MAX_SIZE] = {0,};
+
+    memset(argument , 0 , MAX_SIZE);
+    sscanf(input, "%s %s" , command , argument);
+
+    if(strcmp(command , "exit") == 0){
+        exit(0);
+    }
+    else if(strcmp(command, "cd") == 0){
+        cd(current_dir,argument,root,home);
+    }
+    else if(strcmp(command, "ls") ==0){
+        ls(*current_dir);
+    }
+    else if(strcmp(command , "pwd") == 0){
+        pwd(*current_dir , 1);
+        printf("\n");
+    }
+    else{
+        printf("%s: command not found\n" , command); 
+    }
+    
+
+}
+
 
 void free_memory(Directory *dir){
     for(int i = 0; i<dir->subdirectory_count; i++){
@@ -119,7 +168,7 @@ void pwd(Directory *current_dir , int isHead){
 int main(){
 
     char username[MAX_SIZE] = "kaleido";
-    char hostname[MAX_SIZE] = "anggimoti";
+    char hostname[MAX_SIZE] = "iamthehost";
     char input[MAX_SIZE] = {0,};
 
     char command[MAX_SIZE];
@@ -148,27 +197,18 @@ int main(){
         fgets(input , 100 , stdin);      
         input[strcspn(input, "\n")] = '\0';
         
-        memset(argument , 0 , MAX_SIZE);
-        sscanf(input, "%s %s" , command , argument);
+        if(strchr(input , '|')){
+            char *cmds[10] = {0,};
+            split_pipeline(input , cmds);
 
-        if(strcmp(command , "exit") == 0){
-            break;
-        }
-        else if(strcmp(command, "cd") == 0){
-            cd(&current_dir,argument,root ,kaleido);
-        }
-        else if(strcmp(command, "ls") ==0){
-            ls(current_dir);
-        }
-        else if(strcmp(command , "pwd") == 0){
-            pwd(current_dir , 1);
-            printf("\n");
-        }
-        else{
-            printf("%s: command not found\n" , command); 
-        }
-        
+            for(int i = 0; cmds[i]; i++){
+                execute_command(cmds[i] , &current_dir , root, kaleido);    
+            }
 
+            continue;
+        }
+
+        execute_command(input, &current_dir,root,kaleido);
     }
 
     free_memory(root);
