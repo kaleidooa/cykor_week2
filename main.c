@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ctype.h>
+#include <signal.h>
 
 #define MAX_SIZE 100
 
@@ -78,10 +79,12 @@ int execute_command(char* input , Directory **current_dir , Directory *root , Di
     }
     else if(strcmp(command, "ls") ==0){
         ls(*current_dir);
+        return 0;
     }
     else if(strcmp(command , "pwd") == 0){
         pwd(*current_dir , 1);
         printf("\n");
+        return 0;
     }
     else{
         printf("%s: command not found\n" , command); 
@@ -226,7 +229,7 @@ int cd(Directory **current_dir, char *where, Directory *root , Directory *home){
 
     if(strlen(where) == 0){
         *current_dir = home;
-        return;
+        return 0;
     }
 
     if(where[0] == '/'){
@@ -280,7 +283,8 @@ int ls(Directory *current_dir){
         }
     }
     if(current_dir->subdirectory_count == 0){
-        return;
+        printf("\n");
+        return 0;
     }
     printf("\n");
 
@@ -289,7 +293,7 @@ int ls(Directory *current_dir){
 
 int pwd(Directory *current_dir , int isHead){
     if(current_dir == NULL){
-        return;
+        return 0;
     }
 
     if(current_dir->parent!=NULL){
@@ -342,6 +346,8 @@ int main(){
     char command[MAX_SIZE];
     char argument[MAX_SIZE];
 
+    signal(SIGCHLD, SIG_IGN);
+
     Directory *root = create_directory("root" , NULL);
     Directory *home = create_directory("home" , root);
     Directory *etc = create_directory("etc" , root);
@@ -364,6 +370,26 @@ int main(){
 
         fgets(input , 100 , stdin);      
         input[strcspn(input, "\n")] = '\0';
+
+        int bg = 0;
+        size_t len = strlen(input);
+        if(len > 0 && input[len-1] == '&'){
+            bg = 1;
+            input[--len] = '\0';
+            while(len > 0 && input[len -1] == '&'){
+                input[--len] = '\0';
+            }
+        }
+        if (bg) {
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("fork");
+            } else if (pid == 0) {
+                run_logical_chain(input, &current_dir, root, home);
+                exit(0);
+            }
+            continue;
+        }
 
         if(strchr(input, ';')){
             char *seq[10] = {0,};   
